@@ -8,10 +8,22 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.FileProviders;
+using Serilog;
+using NZWalks.API.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+#region Logger
+var logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/NzWalks_Log.txt",rollingInterval: RollingInterval.Day)
+    .MinimumLevel.Information()
+    .CreateLogger();
+
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog(logger);
+#endregion
 
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor(); // for file upload
@@ -26,6 +38,7 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1"
     });
 
+    #region Authentication
     options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -53,16 +66,22 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+#endregion
+
+#region DbContext
 builder.Services.AddDbContext<NZWalksDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("NZWalkConnectionString")));
 
 builder.Services.AddDbContext<NzWalksAuthDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("NZWalkAuthConnectionString")));
+#endregion
 
+#region Repository
 builder.Services.AddScoped<IRegionRepositories,RegionRepositories>();
 builder.Services.AddScoped<IWalkRepository,WalkRepository>();
 builder.Services.AddScoped<ITokenRepository, TokenRepository>();
 builder.Services.AddScoped<IImageRepository, LocalImageRepository>();
+#endregion
 
 builder.Services.AddAutoMapper(typeof(AutoMapperProfiles));
 
@@ -106,6 +125,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<ExceptionHandlerMiddleware>(); // Global custom exception
 
 app.UseHttpsRedirection();
 
