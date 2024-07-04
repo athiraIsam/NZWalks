@@ -9,8 +9,10 @@ using NZWalks.API.Repositories;
 
 namespace NZWalks.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
+    [ApiVersion("2.0")]
     public class WalksController : ControllerBase
     {
         private readonly IMapper mapper;
@@ -42,8 +44,9 @@ namespace NZWalks.API.Controllers
         // GET: Walks
         // GET: /api/walks?filterOn={filterOn}&filterQuery={filterQuery}&sortBy={sortBy}&isAscending={isAscending}
         //&pageNumber={pageNumber}&pageSize={pageSize}
+        [MapToApiVersion("1.0")]
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? filterOn, [FromQuery] string? filterQuery,
+        public async Task<IActionResult> GetAllV1([FromQuery] string? filterOn, [FromQuery] string? filterQuery,
             [FromQuery] string? sortBy, [FromQuery] bool? isAscending, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var walkDomainModel = await walkRepository.GetAllAsync(filterOn,filterQuery,sortBy, isAscending?? true
@@ -53,6 +56,19 @@ namespace NZWalks.API.Controllers
             var mapDto = mapper.Map<List<WalkDto>>(walkDomainModel);
 
             return Ok(mapDto);
+        }
+
+        [MapToApiVersion("2.0")]
+        [HttpGet]
+        public async Task<IActionResult> GetAllV2([FromQuery] string? filterOn, [FromQuery] string? filterQuery,[FromQuery] string? sortBy, [FromQuery] bool? isAscending, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            var walkDomainModel = await walkRepository.GetAllAsync(filterOn, filterQuery, sortBy, isAscending ?? true
+                , pageNumber, pageSize);
+
+            //Map Domain to Dto
+            var mapDto = mapper.Map<List<WalkDto>>(walkDomainModel);
+
+            return Ok("v2");
         }
 
         // GET Walk by Id

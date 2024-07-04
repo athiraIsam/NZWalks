@@ -10,6 +10,9 @@ using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
 using NZWalks.API.Middlewares;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using NZWalks.API;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,17 +29,33 @@ builder.Logging.AddSerilog(logger);
 #endregion
 
 builder.Services.AddControllers();
+
+#region Versionin
+builder.Services.AddApiVersioning(options =>
+{
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.ReportApiVersions = true;
+});
+
+builder.Services.AddVersionedApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+#endregion
+
 builder.Services.AddHttpContextAccessor(); // for file upload
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "NZ Walks API",
-        Version = "v1"
-    });
+    //options.SwaggerDoc("v1", new OpenApiInfo
+    //{
+    //    Title = "NZ Walks API",
+    //    Version = "v1"
+    //});
 
     #region Authentication
     options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
@@ -65,7 +84,7 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-
+builder.Services.ConfigureOptions<ConfigureSwaggerOptions>(); // swagger versioning
 #endregion
 
 #region DbContext
@@ -119,11 +138,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+//versioning
+var versionDescriptionProvider =
+    app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        foreach(var description in versionDescriptionProvider.ApiVersionDescriptions)
+        {
+            options.SwaggerEndpoint($"/swagger/{description.GroupName}/swagger.json",
+            description.GroupName.ToUpperInvariant());
+        }
+
+    });
 }
 
 app.UseMiddleware<ExceptionHandlerMiddleware>(); // Global custom exception
