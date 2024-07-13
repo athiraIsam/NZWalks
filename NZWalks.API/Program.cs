@@ -13,6 +13,7 @@ using NZWalks.API.Middlewares;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using NZWalks.API;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,6 +86,11 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>(); // swagger versioning
+#endregion
+
+#region Fluent validation
+builder.Services.
+    AddFluentValidation(options => options.RegisterValidatorsFromAssemblyContaining<Program>());
 #endregion
 
 #region DbContext
